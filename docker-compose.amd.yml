@@ -1,0 +1,113 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.authc.api_key.enabled=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enrollment.enabled=true
+      - ingest.geoip.downloader.enabled=false  # Reduce startup time
+      - ELASTIC_PASSWORD=changeme  # Strong password for 'elastic' user
+    ports:
+      - "9200:9200"
+    networks:
+      - rag-network
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:changeme http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+  elasticsearch-setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: elasticsearch-setup
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./setup-elasticsearch.sh:/setup-elasticsearch.sh
+    networks:
+      - rag-network
+    command: ["/bin/bash", "/setup-elasticsearch.sh"]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=changeme
+      - XPACK_SECURITY_ENABLED=true
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch-setup:
+        condition: service_completed_successfully
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f -u kibana_system:changeme http://localhost:5601/api/status >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  ollama:
+    image: ollama/ollama:rocm
+    container_name: ollama
+    environment:
+      HSA_OVERRIDE_GFX_VERSION: "10.3.0"
+
+    ports:
+      - "11434:11434"
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+    privileged: true  # Required for GPU access
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rag-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-app
+    ports:
+      - "7860:7860"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+      - OLLAMA_HOST=http://ollama:11434
+    networks:
+      - rag-network
+    stdin_open: true
+    tty: true
+
+networks:
+  rag-network:
+    driver: bridge
+
+volumes:
+  elasticsearch_data:
+  ollama_data:
