@@ -30,29 +30,45 @@ storage = create_storage(
     embedding_dim=768
 )
 
-def process_file(file):
-    """Process uploaded file"""
-    if not file:
-        return "Please upload a file first."
+def process_file(files):
+    """Process uploaded files"""
+    if not files:
+        return "Please upload files first."
 
-    content = ""
-    filename = os.path.basename(file.name)
-    if filename.lower().endswith('.pdf'):
-        # Use PyPDF to read PDF files
-        reader = PdfReader(file)
-        for page in reader.pages:
-            content += page.extract_text() + "\n"
-    else:
-        with open(file.name, "r", encoding="utf-8") as f:
-            content = f.read()
+    results = []
+    for file in files:
+        try:
+            content = ""
+            filename = os.path.basename(file.name)
+            if filename.lower().endswith('.pdf'):
+                # Use PyPDF to read PDF files
+                reader = PdfReader(file)
+                for page in reader.pages:
+                    content += page.extract_text() + "\n"
+            else:
+                with open(file.name, "r", encoding="utf-8") as f:
+                    content = f.read()
 
-    result = storage.store_document(
-        content=content,
-        filename=os.path.basename(file.name),
-        get_embedding_fn=get_embedding,
-    )
-    logger.info(result)
-    return result
+            result = storage.store_document(
+                content=content,
+                filename=filename,
+                get_embedding_fn=get_embedding,
+            )
+            results.append(f"✅ {filename}: {result}")
+            logger.info(f"Processed {filename}: {result}")
+            
+        except Exception as e:
+            error_msg = f"❌ Error processing {filename}: {str(e)}"
+            results.append(error_msg)
+            logger.error(error_msg)
+
+    return "\n".join(results)
+
+def process_single_file(file):
+    """Wrapper for backward compatibility with single file processing"""
+    if file:
+        return process_file([file])
+    return "Please upload a file first."
 
 # Create Gradio interface
 with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
@@ -74,9 +90,13 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
             num_chunks = gr.Slider(1, 5, value=3, label="Context chunks")
     
     with gr.Tab("Upload Documents"):
-        file_output = gr.Textbox(label="Status")
+        file_output = gr.Textbox(label="Status", lines=10)
         with gr.Row():
-            file_input = gr.File(label="Upload Document", file_types=[".txt", ".pdf"])
+            file_input = gr.File(
+                label="Upload Documents", 
+                file_types=[".txt", ".pdf"],
+                file_count="multiple"  # Enable multiple file selection
+            )
             upload_btn = gr.Button("Upload and Index")
     
     with gr.Tab("Document Search"):
@@ -97,9 +117,18 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
     
     upload_btn.click(process_file, file_input, file_output)
     
-    def search_docs(query):
-        results = storage.search_similar(query, get_embedding, k=5)
-        return results
+    def search_docs(query, search_type):
+        if search_type == "Filename (text)":
+            return storage._search_filename_text(query, k=5)
+        elif search_type == "Content (semantic)":
+            return storage._search_by_content(query, get_embedding, k=5)
+        elif search_type == "Filename (semantic)":
+            return storage._search_by_filename(query, get_embedding, k=5)
+        elif search_type == "Hybrid":
+            return storage.hybrid_search(query, get_embedding, k=5)
+        else:  # Combined (default)
+            return storage.search_similar(query, get_embedding, k=5, search_type="combined")
+
     
     search_btn.click(search_docs, search_query, search_results)
 

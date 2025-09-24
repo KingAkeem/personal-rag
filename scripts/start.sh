@@ -117,7 +117,7 @@ done
 # Pull Ollama models with error handling
 echo -e "${YELLOW}Pulling Ollama models...${NC}"
 
-MODELS=("nomic-embed-text" "llama2:7b")
+MODELS=("nomic-embed-text" "llama2:7b", "llama2-uncensored:7b")
 
 for model in "${MODELS[@]}"; do
     echo "Pulling $model..."
