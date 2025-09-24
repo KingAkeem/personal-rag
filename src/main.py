@@ -4,6 +4,7 @@ import gradio as gr
 import os
 
 from storage import create_storage
+from pypdf import PdfReader
 
 from embeddings import get_embedding
 from llm import rag_chat
@@ -31,17 +32,27 @@ storage = create_storage(
 
 def process_file(file):
     """Process uploaded file"""
-    if file:
+    if not file:
+        return "Please upload a file first."
+
+    content = ""
+    filename = os.path.basename(file.name)
+    if filename.lower().endswith('.pdf'):
+        # Use PyPDF to read PDF files
+        reader = PdfReader(file)
+        for page in reader.pages:
+            content += page.extract_text() + "\n"
+    else:
         with open(file.name, "r", encoding="utf-8") as f:
             content = f.read()
-        result = storage.store_document(
-            content=content,
-            filename=os.path.basename(file.name),
-            get_embedding_fn=get_embedding,
-        )
-        logger.info(result)
-        return result
-    return "Please upload a file first."
+
+    result = storage.store_document(
+        content=content,
+        filename=os.path.basename(file.name),
+        get_embedding_fn=get_embedding,
+    )
+    logger.info(result)
+    return result
 
 # Create Gradio interface
 with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
@@ -65,7 +76,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
     with gr.Tab("Upload Documents"):
         file_output = gr.Textbox(label="Status")
         with gr.Row():
-            file_input = gr.File(label="Upload Document", file_types=[".txt"])
+            file_input = gr.File(label="Upload Document", file_types=[".txt", ".pdf"])
             upload_btn = gr.Button("Upload and Index")
     
     with gr.Tab("Document Search"):
