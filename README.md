@@ -62,20 +62,16 @@ cd personal-rag-assistant
 ### 2. Auto-Detect Setup (Recommended)
 ```bash
 # The script automatically detects your GPU and configures accordingly
-./startup.sh
+./start.sh
 ```
 
 ### 3. Manual Setup (If you need specific control)
 ```bash
 # For AMD GPUs
-./startup.sh amd
-# or
-./start-amd.sh
+./start.sh amd
 
 # For NVIDIA GPUs
-./startup.sh nvidia
-# or
-./start-nvidia.sh
+./start.sh nvidia
 ```
 
 ### 4. Access the Application
@@ -88,17 +84,16 @@ cd personal-rag-assistant
 
 ```
 personal-rag-assistant/
-├── main.py                 # Main Gradio web interface
-├── embeddings.py           # Text embedding utilities (nomic-embed-text)
-├── storage.py              # Elasticsearch vector database operations
-├── llm.py                  # LLM chat and RAG functionality (llama2:7b)
+├── src/main.py                 # Main Gradio web interface
+├── src/embeddings           # Text embedding utilities (nomic-embed-text)
+├── src/storage              # Vector database operations (Elasticsearch, etc.)
+├── src/llm                  # LLM chat and RAG functionality (llama2:7b)
 ├── docker-compose.amd.yml  # AMD GPU configuration
 ├── docker-compose.nvidia.yml # NVIDIA GPU configuration
-├── startup.sh              # Auto-detecting startup script
-├── start-amd.sh            # AMD-specific startup
-├── start-nvidia.sh         # NVIDIA-specific startup
+├── start.sh                # Auto-detecting startup script
 ├── stop.sh                 # Stop all services
-└── setup-elasticsearch.sh  # Elasticsearch initialization
+├── setup-elasticsearch.sh  # Elasticsearch initialization
+└── install-rocm.sh  # Setup ROCM for AMD GPUs locally
 ```
 
 ## 🔧 Core Components
@@ -109,18 +104,18 @@ personal-rag-assistant/
 - Configurable context chunks (1-5)
 - File upload support for .txt, .pdf, .md files
 
-### Vector Storage (`storage.py`)
+### Vector Storage (`elasticsearch`)
 - Elasticsearch 8.13.0 with vector search capabilities
 - Automatic text chunking with configurable overlap
 - Cosine similarity search for semantic retrieval
 - Document indexing and management
 
-### LLM Integration (`llm.py`)
+### LLM Integration (`llm`)
 - Ollama integration with streaming support
 - RAG pipeline with context augmentation
 - Configurable chat models (default: llama2:7b)
 
-### Embeddings (`embeddings.py`)
+### Embeddings (`embeddings`)
 - Local embedding generation using nomic-embed-text
 - 768-dimensional vector embeddings
 - Error handling and fallback mechanisms
@@ -180,10 +175,10 @@ EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', "all-minilm:l6-v2")  # Change emb
 **GPU Not Detected**
 ```bash
 # Check GPU detection
-./startup.sh --debug
+./start.sh --debug
 
 # Force CPU mode
-./startup.sh amd  # Uses CPU-only fallback
+./start.sh amd  # Uses CPU-only fallback
 ```
 
 **Ollama Model Fails to Load**
@@ -249,27 +244,12 @@ docker stats
 - Adjust chunk size and overlap in `storage.py`
 - Monitor disk space for vector storage
 
-## 🤝 Contributing
-
-We welcome contributions! Please feel free to submit issues, fork the repository, and create pull requests.
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with both AMD and NVIDIA configurations
-5. Submit a pull request
-
 ### Areas for Contribution
-- Additional file format support (PDF, DOCX)
+- Additional file format support (DOCX)
 - Enhanced UI/UX improvements
 - More embedding model options
 - Performance optimizations
 - Additional vector database support
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
