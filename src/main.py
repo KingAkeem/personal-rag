@@ -3,8 +3,9 @@ import logging
 import gradio as gr
 import os
 
+from storage import create_storage
+
 from embeddings import get_embedding
-from storage import search_similar_chunks, index_document, wait_for_elasticsearch_ready, create_index
 from llm import rag_chat
 
 # Set up logging
@@ -13,17 +14,37 @@ logger = logging.getLogger(__name__)
 
 # Constants
 INDEX_NAME = "personal_documents"
+
+# Initialize Elasticsearch
+ES_HOST = os.getenv("ES_HOST", "elasticsearch")
+ES_PORT = os.getenv("ES_PORT", "9200")
+ES_USERNAME = os.getenv('ES_USERNAME', 'elastic')
+ES_PASSWORD = os.getenv('ES_PASSWORD', 'changeme')
+storage = create_storage(
+    "elasticsearch",
+    host=f"http://{ES_HOST}:{ES_PORT}",
+    username=ES_USERNAME,
+    password=ES_PASSWORD,
+    index_name=INDEX_NAME,
+    embedding_dim=768
+)
+
 def process_file(file):
     """Process uploaded file"""
     if file:
         with open(file.name, "r", encoding="utf-8") as f:
             content = f.read()
-        result = index_document(content, os.path.basename(file.name), INDEX_NAME, get_embedding)
+        result = storage.store_document(
+            content=content,
+            filename=os.path.basename(file.name),
+            get_embedding_fn=get_embedding,
+        )
+        logger.info(result)
         return result
     return "Please upload a file first."
 
 # Create Gradio interface
-with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as demo:
+with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
     gr.Markdown("# 📚 Personal RAG Assistant")
     gr.Markdown("Upload your documents and chat with them using AI!")
     
@@ -44,7 +65,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as demo:
     with gr.Tab("Upload Documents"):
         file_output = gr.Textbox(label="Status")
         with gr.Row():
-            file_input = gr.File(label="Upload Document", file_types=[".txt", ".pdf", ".md"])
+            file_input = gr.File(label="Upload Document", file_types=[".txt"])
             upload_btn = gr.Button("Upload and Index")
     
     with gr.Tab("Document Search"):
@@ -55,7 +76,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as demo:
     # Event handlers
     def respond(message, chat_history, chunks):
         chat_history.append([message, ""])
-        for response in rag_chat(message, chat_history, int(chunks), search_similar_chunks, get_embedding, INDEX_NAME):
+        for response in rag_chat(message, chat_history, int(chunks), storage.search_similar, get_embedding):
             chat_history[-1][1] = response
             yield chat_history, ""
     
@@ -66,14 +87,12 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as demo:
     upload_btn.click(process_file, file_input, file_output)
     
     def search_docs(query):
-        results = search_similar_chunks(query, get_embedding, INDEX_NAME, k=5)
+        results = storage.search_similar(query, get_embedding, k=5)
         return results
     
     search_btn.click(search_docs, search_query, search_results)
 
 if __name__ == "__main__":
-    if not wait_for_elasticsearch_ready(timeout=180):
-        raise SystemExit("Elasticsearch service is not available. Exiting.")
-
-    create_index(index_name=INDEX_NAME)
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    if storage.initialize():
+        logger.info("Storage initialized successfully.")
+        app.launch(server_name="0.0.0.0", server_port=7860, share=False)

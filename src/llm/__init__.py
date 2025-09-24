@@ -11,14 +11,13 @@ def rag_chat(
     num_chunks: int,
     search_similar_chunks,
     get_embedding,
-    INDEX_NAME
 ) -> Iterator[str]:
     """Generate RAG response with streaming"""
     # Search for relevant context
-    context_chunks = search_similar_chunks(message, get_embedding, INDEX_NAME, k=num_chunks)
+    context_chunks = search_similar_chunks(message, get_embedding, k=num_chunks)
     
     if context_chunks:
-        context = "\n\n".join([f"From {chunk['filename']}:\n{chunk['content']}" 
+        context = "\n\n".join([f"From {chunk.filename}:\n{chunk.content}" 
                               for chunk in context_chunks])
         prompt = f"""Based on the following context, answer the user's question. 
 If the context doesn't contain relevant information, say so.
@@ -36,7 +35,7 @@ Answer:"""
     
     # Generate streaming response
     full_response = ""
-    sources_text = "\n\nSources:\n" + "\n".join([f"- {chunk['filename']} (score: {chunk['score']:.3f})" 
+    sources_text = "\n\nSources:\n" + "\n".join([f"- {chunk.filename} (score: {chunk.score:.3f})" 
                                                for chunk in context_chunks]) if context_chunks else ""
     
     for response in ollama.generate(model=CHAT_MODEL, prompt=prompt, stream=True):
