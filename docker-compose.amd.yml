@@ -29,7 +29,7 @@ services:
       elasticsearch:
         condition: service_healthy
     volumes:
-      - ./setup-elasticsearch.sh:/setup-elasticsearch.sh
+      - ./scripts/setup-elasticsearch.sh:/setup-elasticsearch.sh
     networks:
       - rag-network
     command: ["/bin/bash", "/setup-elasticsearch.sh"]

@@ -72,8 +72,8 @@ if [ ! -f "$COMPOSE_FILE" ]; then
 fi
 
 # Create necessary directories
-mkdir -p elasticsearch
-mkdir -p ollama
+mkdir -p data/elasticsearch
+mkdir -p data/ollama
 
 echo -e "${GREEN}Starting services with $COMPOSE_FILE...${NC}"
 

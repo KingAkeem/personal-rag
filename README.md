@@ -62,16 +62,16 @@ cd personal-rag-assistant
 ### 2. Auto-Detect Setup (Recommended)
 ```bash
 # The script automatically detects your GPU and configures accordingly
-./start.sh
+./scripts/start.sh
 ```
 
 ### 3. Manual Setup (If you need specific control)
 ```bash
 # For AMD GPUs
-./start.sh amd
+./scripts/start.sh amd
 
 # For NVIDIA GPUs
-./start.sh nvidia
+./scripts/start.sh nvidia
 ```
 
 ### 4. Access the Application
@@ -90,10 +90,10 @@ personal-rag-assistant/
 ├── src/llm                  # LLM chat and RAG functionality (llama2:7b)
 ├── docker-compose.amd.yml  # AMD GPU configuration
 ├── docker-compose.nvidia.yml # NVIDIA GPU configuration
-├── start.sh                # Auto-detecting startup script
-├── stop.sh                 # Stop all services
-├── setup-elasticsearch.sh  # Elasticsearch initialization
-└── install-rocm.sh  # Setup ROCM for AMD GPUs locally
+├── scripts/start.sh                # Auto-detecting startup script
+├── scripts/stop.sh                 # Stop all services
+├── scripts/setup-elasticsearch.sh  # Elasticsearch initialization
+└── scripts/install-rocm.sh  # Setup ROCM for AMD GPUs locally
 ```
 
 ## 🔧 Core Components
@@ -175,10 +175,10 @@ EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', "all-minilm:l6-v2")  # Change emb
 **GPU Not Detected**
 ```bash
 # Check GPU detection
-./start.sh --debug
+./scripts/start.sh --debug
 
 # Force CPU mode
-./start.sh amd  # Uses CPU-only fallback
+./scripts/start.sh amd  # Uses CPU-only fallback
 ```
 
 **Ollama Model Fails to Load**
