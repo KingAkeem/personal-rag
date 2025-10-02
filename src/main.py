@@ -9,6 +9,9 @@ from pypdf import PdfReader
 from embeddings import get_embedding
 from llm import rag_chat
 
+# NEW: import the Gmail tab helper
+from gmail_ingest import add_gmail_tab
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -70,6 +73,30 @@ def process_single_file(file):
         return process_file([file])
     return "Please upload a file first."
 
+# NEW: adapter to store one email into your index
+def store_email_document(email_doc: dict) -> str:
+    """
+    Adapts a Gmail email_doc into your storage format.
+    Uses storage.store_document(get_embedding_fn=get_embedding).
+    Returns a short status string for the UI log.
+    """
+    subject = email_doc.get("subject") or "(no subject)"
+    from_field = email_doc.get("from") or ""
+    dt = email_doc.get("date") or ""
+    header_block = f"Subject: {subject}\nFrom: {from_field}\nDate: {dt}\n\n"
+    body = email_doc.get("text") or ""
+    content = header_block + body
+
+    # Stable key to avoid duplication if re-ingested
+    filename = f"gmail:{email_doc['id']}"
+
+    res = storage.store_document(
+        content=content,
+        filename=filename,
+        get_embedding_fn=get_embedding,
+    )
+    return f"OK {subject[:80]} — {res}"
+
 # Create Gradio interface
 with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
     gr.Markdown("# 📚 Personal RAG Assistant")
@@ -117,7 +144,7 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
     
     upload_btn.click(process_file, file_input, file_output)
     
-    def search_docs(query, search_type):
+    def search_docs(query, search_type="Combined"):
         if search_type == "Filename (text)":
             return storage._search_filename_text(query, k=5)
         elif search_type == "Content (semantic)":
@@ -129,10 +156,14 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Personal RAG Assistant") as app:
         else:  # Combined (default)
             return storage.search_similar(query, get_embedding, k=5, search_type="combined")
 
-    
     search_btn.click(search_docs, search_query, search_results)
+
+    # --- New Gmail tab (mounted without passing the Blocks object) ---
+    add_gmail_tab(store_email_fn=store_email_document, default_query="in:inbox newer_than:30d")
 
 if __name__ == "__main__":
     if storage.initialize():
         logger.info("Storage initialized successfully.")
         app.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    else:
+        logger.error("Failed to initialize storage. Exiting.")

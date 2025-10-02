@@ -3,3 +3,12 @@ ollama>=0.1.0
 elasticsearch>=8.8.0,<8.13.0
 python-dotenv>=1.0.0
 pypdf
+
+google-api-python-client>=2.130.0
+google-auth>=2.25.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.2.0
+
+# Text parsing
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
