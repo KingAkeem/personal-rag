@@ -17,6 +17,8 @@ A powerful, self-hosted Retrieval-Augmented Generation (RAG) application that le
 - **🔧 Easy Setup**: Docker-based deployment with auto-detection for your hardware
 - **📈 Real-time Streaming**: Watch responses generate token-by-token
 - **🔍 Vector Search**: Semantic search powered by Elasticsearch's dense vector capabilities
+- **Local Embedding Choices**: Keep Ollama by default or opt into an in-process CPU encoder
+- **Context Budgeting**: Optional local history and retrieved-context compression for long chats
 
 ## 🏗️ Architecture
 
@@ -84,16 +86,16 @@ cd personal-rag
 
 ```
 personal-rag-assistant/
-├── src/main.py                 # Main Gradio web interface
-├── src/embeddings           # Text embedding utilities (nomic-embed-text)
-├── src/storage              # Vector database operations (Elasticsearch, etc.)
-├── src/llm                  # LLM chat and RAG functionality (llama2:7b)
-├── docker-compose.amd.yml  # AMD GPU configuration
-├── docker-compose.nvidia.yml # NVIDIA GPU configuration
-├── scripts/start.sh                # Auto-detecting startup script
-├── scripts/stop.sh                 # Stop all services
-├── scripts/setup-elasticsearch.sh  # Elasticsearch initialization
-└── scripts/install-rocm.sh  # Setup ROCM for AMD GPUs locally
+├── src/main.py                  # Main Gradio web interface
+├── src/embeddings               # Configurable local embedding providers
+├── src/context_compression.py   # Optional extractive context budgeting
+├── src/storage                  # Vector database operations
+├── src/llm                      # Local LLM chat and RAG functionality
+├── benchmarks/run.py            # Local embedding/retrieval benchmark
+├── docs/benchmarks.md           # Benchmark and metric guidance
+├── docker-compose.amd.yml       # AMD GPU configuration
+├── docker-compose.nvidia.yml    # NVIDIA GPU configuration
+└── scripts                      # Setup, start, and stop utilities
 ```
 
 ## 🔧 Core Components
@@ -116,9 +118,10 @@ personal-rag-assistant/
 - Configurable chat models (default: llama2:7b)
 
 ### Embeddings (`embeddings`)
-- Local embedding generation using nomic-embed-text
-- 768-dimensional vector embeddings
-- Error handling and fallback mechanisms
+- Local embedding generation using Ollama `nomic-embed-text` by default
+- Provider and model selection through environment variables
+- Optional CPU-friendly `sentence-transformers/all-MiniLM-L6-v2` provider
+- Index dimensions derived from the selected provider
 
 ## 💻 Usage
 
@@ -152,21 +155,66 @@ ELASTICSEARCH_PASSWORD: "changeme"
 # Ollama Configuration
 OLLAMA_HOST: "http://ollama:11434"
 
-# Model Configuration (in respective Python files)
+# Model Configuration
 CHAT_MODEL: "llama2:7b"
+EMBEDDING_PROVIDER: "ollama"
 EMBEDDING_MODEL: "nomic-embed-text"
+EMBEDDING_DIM: "768"
+INDEX_NAME: "personal_documents"
+
+# Optional context compression (disabled by default)
+CONTEXT_COMPRESSION: "false"
 ```
 
 ### Model Customization
-To use different models, modify the environment variables or directly edit the Python files:
+The current default remains Ollama with `nomic-embed-text`. To use the optional CPU encoder:
 
-```python
-# In llm.py
-CHAT_MODEL = os.getenv("CHAT_MODEL", "mistral:7b")  # Change default model
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-cpu.txt
 
-# In embeddings.py  
-EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', "all-minilm:l6-v2")  # Change embedding model
+export EMBEDDING_PROVIDER=sentence-transformers
+export EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+export EMBEDDING_DEVICE=cpu
+export INDEX_NAME=personal_documents_minilm
+python3 src/main.py
 ```
+
+MiniLM produces 384-dimensional vectors. Use a new `INDEX_NAME` and re-ingest documents when changing provider, model, or vector dimension; Elasticsearch cannot mix dimensions in an existing index. The application reports a clear mismatch instead of indexing incompatible vectors.
+
+For the Docker app, install the optional dependency at build time and pass the same environment values through Compose:
+
+```bash
+INSTALL_CPU_EMBEDDINGS=true \
+EMBEDDING_PROVIDER=sentence-transformers \
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2 \
+INDEX_NAME=personal_documents_minilm \
+docker compose -f docker-compose.nvidia.yml up --build
+```
+
+### Optional Context Compression
+
+Normal retrieval remains the default. For long chats, enable local extractive compression to include bounded recent history in retrieval and cap retrieved text before prompt construction:
+
+```bash
+export CONTEXT_COMPRESSION=true
+export CONTEXT_COMPRESSION_HISTORY_CHARS=2000
+export CONTEXT_COMPRESSION_CHUNK_CHARS=1200
+export CONTEXT_COMPRESSION_MAX_CHARS=5000
+```
+
+This path performs deterministic whitespace compaction and truncation only. It does not send conversation history to another model or service.
+
+### Local Benchmarks
+
+Run the dependency-free benchmark smoke test:
+
+```bash
+PYTHONPATH=src python3 benchmarks/run.py --provider hash
+```
+
+For model-backed CPU, Ollama, compression, memory, latency, and retrieval-quality comparisons, see [Local embedding and compression benchmarks](docs/benchmarks.md).
 
 ## 🐛 Troubleshooting
 

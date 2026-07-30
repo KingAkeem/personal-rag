@@ -53,6 +53,17 @@ class ElasticsearchStorage(VectorStorage):
                     }
                 }
                 self.es_client.indices.create(index=self.index_name, body=mapping)
+            else:
+                mappings = self.es_client.indices.get_mapping(index=self.index_name)
+                properties = mappings[self.index_name]["mappings"].get("properties", {})
+                for field in ("content_embedding", "filename_embedding", "combined_embedding"):
+                    current_dim = properties.get(field, {}).get("dims")
+                    if current_dim is not None and current_dim != self.embedding_dim:
+                        raise ValueError(
+                            f"Index {self.index_name!r} uses {current_dim}-dimension vectors "
+                            f"but the selected provider uses {self.embedding_dim}. "
+                            "Set INDEX_NAME to a new index and re-ingest documents."
+                        )
             
             self._initialized = True
             return True

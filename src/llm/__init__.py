@@ -2,6 +2,11 @@ import ollama
 import os
 
 from typing import List, Iterator
+from context_compression import (
+    CompressionConfig,
+    build_retrieval_query,
+    format_retrieved_context,
+)
 
 CHAT_MODEL = os.getenv("CHAT_MODEL", "llama2-uncensored:7b")
 
@@ -11,15 +16,19 @@ def rag_chat(
     num_chunks: int,
     search_similar_chunks,
     get_embedding,
+    compression_config=None,
 ) -> Iterator[str]:
     """Generate RAG response with stronger instructions"""
-    
+
+    if compression_config is None:
+        compression_config = CompressionConfig.from_env()
+
     # Search for relevant context
-    context_chunks = search_similar_chunks(message, get_embedding, k=num_chunks)
+    retrieval_query = build_retrieval_query(message, history, compression_config)
+    context_chunks = search_similar_chunks(retrieval_query, get_embedding, k=num_chunks)
     
     if context_chunks:
-        context = "\n\n".join([f"From {chunk.filename}:\n{chunk.content}" 
-                              for chunk in context_chunks])
+        context = format_retrieved_context(context_chunks, compression_config)
         prompt = f"""IMPORTANT: You are a personal assistant for the user. The user is asking about THEIR OWN information from THEIR OWN documents. 
 You MUST provide the exact information they are asking for from their documents.
 
