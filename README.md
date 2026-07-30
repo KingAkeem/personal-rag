@@ -216,6 +216,42 @@ PYTHONPATH=src python3 benchmarks/run.py --provider hash
 
 For model-backed CPU, Ollama, compression, memory, latency, and retrieval-quality comparisons, see [Local embedding and compression benchmarks](docs/benchmarks.md).
 
+## Local Validation
+
+For a fast local check that does not require Elasticsearch, Ollama, a GPU, or
+cloud credentials:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+PYTHONPATH=src:. python -m unittest discover -s tests -v
+python -m compileall -q src benchmarks tests
+PYTHONPATH=src python benchmarks/run.py --provider hash --output /tmp/personal-rag-benchmark.json
+docker compose -f docker-compose.nvidia.yml config
+docker compose -f docker-compose.amd.yml config
+```
+
+Build the application image without optional CPU embedding dependencies:
+
+```bash
+docker build --build-arg INSTALL_CPU_EMBEDDINGS=false -t personal-rag:local .
+```
+
+To test the optional CPU embedding provider locally, install
+`requirements-cpu.txt` in the same virtual environment and run the benchmark
+with `--provider sentence-transformers`. This downloads the selected model to
+your local machine.
+
+## CI/CD
+
+`.github/workflows/ci.yml` runs on pull requests, pushes to `main` or `master`,
+and manual dispatch. It installs Python 3.11 dependencies, runs unit tests,
+compiles the Python sources, runs the dependency-free benchmark smoke test,
+uploads the benchmark JSON artifact, validates both Docker Compose files, and
+builds the application image.
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
