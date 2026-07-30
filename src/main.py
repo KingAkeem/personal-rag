@@ -6,7 +6,7 @@ import os
 from storage import create_storage
 from pypdf import PdfReader
 
-from embeddings import get_embedding
+from embeddings import get_embedding, get_embedding_dimension
 from llm import rag_chat
 
 # NEW: import the Gmail tab helper
@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Constants
-INDEX_NAME = "personal_documents"
+INDEX_NAME = os.getenv("INDEX_NAME", "personal_documents")
 
 # Initialize Elasticsearch
 ES_HOST = os.getenv("ES_HOST", "elasticsearch")
@@ -30,7 +30,7 @@ storage = create_storage(
     username=ES_USERNAME,
     password=ES_PASSWORD,
     index_name=INDEX_NAME,
-    embedding_dim=768
+    embedding_dim=get_embedding_dimension()
 )
 
 def process_file(files):

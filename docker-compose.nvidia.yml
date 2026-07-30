@@ -85,6 +85,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        INSTALL_CPU_EMBEDDINGS: "${INSTALL_CPU_EMBEDDINGS:-false}"
     container_name: rag-app
     ports:
       - "7860:7860"
@@ -98,6 +100,15 @@ services:
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=changeme
       - OLLAMA_HOST=http://ollama:11434
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-ollama}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
+      - EMBEDDING_DIM=${EMBEDDING_DIM:-768}
+      - EMBEDDING_DEVICE=${EMBEDDING_DEVICE:-cpu}
+      - INDEX_NAME=${INDEX_NAME:-personal_documents}
+      - CONTEXT_COMPRESSION=${CONTEXT_COMPRESSION:-false}
+      - CONTEXT_COMPRESSION_HISTORY_CHARS=${CONTEXT_COMPRESSION_HISTORY_CHARS:-2000}
+      - CONTEXT_COMPRESSION_CHUNK_CHARS=${CONTEXT_COMPRESSION_CHUNK_CHARS:-1200}
+      - CONTEXT_COMPRESSION_MAX_CHARS=${CONTEXT_COMPRESSION_MAX_CHARS:-5000}
     networks:
       - rag-network
     stdin_open: true

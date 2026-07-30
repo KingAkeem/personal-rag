@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Optional in-process CPU embedding provider.
+sentence-transformers>=2.7.0

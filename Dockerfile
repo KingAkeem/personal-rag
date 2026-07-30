@@ -8,8 +8,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python packages
-COPY requirements.txt .
+COPY requirements.txt requirements-cpu.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+
+ARG INSTALL_CPU_EMBEDDINGS=false
+RUN if [ "$INSTALL_CPU_EMBEDDINGS" = "true" ]; then \
+        pip install --no-cache-dir -r requirements-cpu.txt; \
+    fi
 
 # Copy application code
 COPY src /app/src

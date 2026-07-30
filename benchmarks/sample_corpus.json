@@ -1,0 +1,61 @@
+{
+  "documents": [
+    {
+      "id": "travel",
+      "filename": "travel-notes.txt",
+      "content": "The train reservation to Montreal leaves Friday at 8:10 AM from Central Station. The confirmation code is RAIL-4821."
+    },
+    {
+      "id": "garden",
+      "filename": "garden.md",
+      "content": "Tomatoes should be planted in the south bed after the last frost. Water deeply every three days and add compost in early June."
+    },
+    {
+      "id": "project",
+      "filename": "project-aurora.txt",
+      "content": "Project Aurora uses a weekly release train. The readiness review happens Wednesday and the production deployment is Thursday afternoon."
+    },
+    {
+      "id": "health",
+      "filename": "appointments.txt",
+      "content": "The annual dental appointment is scheduled for September 12 at 2 PM with Dr. Rivera at the downtown clinic."
+    },
+    {
+      "id": "recipes",
+      "filename": "recipes.md",
+      "content": "For lentil soup, saute onion and carrots, add red lentils and vegetable stock, then simmer for twenty-five minutes."
+    },
+    {
+      "id": "finance",
+      "filename": "budget.txt",
+      "content": "The home maintenance budget reserves two hundred dollars each month. Roof repairs are tracked in a separate emergency category."
+    }
+  ],
+  "queries": [
+    {
+      "text": "What is my Montreal train confirmation code?",
+      "expected": "travel",
+      "history": [["Which trip are we discussing?", "The upcoming train trip to Montreal."]]
+    },
+    {
+      "text": "When does the Aurora readiness review happen?",
+      "expected": "project",
+      "history": [["Tell me about the release schedule.", "You asked about Project Aurora."]]
+    },
+    {
+      "text": "How often should I water the tomatoes?",
+      "expected": "garden",
+      "history": []
+    },
+    {
+      "text": "Who is my dentist appointment with?",
+      "expected": "health",
+      "history": []
+    },
+    {
+      "text": "How long should the lentil soup simmer?",
+      "expected": "recipes",
+      "history": []
+    }
+  ]
+}
